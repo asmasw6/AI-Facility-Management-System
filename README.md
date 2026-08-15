@@ -22,6 +22,14 @@ Ticket Creation ->
 AI-Generated Customer Response ->
 Database
 
+## Future Improvements
+
+- Add real-time voice call simulation with speech-to-text and text-to-speech capabilities.
+- Improve the AI-powered ticket classification and priority detection.
+- Enhance the generated AI responses to provide more contextual and personalized replies.
+- Add new facility management features and expand the supported complaint categories.
+- Improve the overall system performance, reliability, and user experience.
+
 ## Technologies
 
 - Python
