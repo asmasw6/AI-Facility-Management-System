@@ -14,18 +14,12 @@ The system analyzes customer call transcripts using NLP and machine learning to 
 
 ## AI Pipeline
 
-Customer Call / Transcript
-        ↓
-Complaint Classification
-        ↓
-Sentiment Analysis
-        ↓
-Priority Detection
-        ↓
-Ticket Creation
-        ↓
-AI-Generated Customer Response
-        ↓
+Customer Call / Transcript ->
+Complaint Classification ->
+Sentiment Analysis ->
+Priority Detection ->
+Ticket Creation ->
+AI-Generated Customer Response ->
 Database
 
 ## Technologies
