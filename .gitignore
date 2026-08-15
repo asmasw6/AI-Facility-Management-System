@@ -1,0 +1,11 @@
+.env
+venv/
+__pycache__/
+*.db
+*.safetensors
+*.pt
+*.pth
+*.h5
+*.keras
+*.pkl
+*.joblib
