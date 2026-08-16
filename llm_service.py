@@ -7,7 +7,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-'''
+
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
@@ -15,14 +15,19 @@ ENV_PATH = BASE_DIR / ".env"
 print("ENV PATH:", ENV_PATH)
 print("ENV EXISTS:", ENV_PATH.exists())
 
-load_dotenv(ENV_PATH)
 
-print("Google API key loaded:", bool(GOOGLE_API_KEY))
-print("KEY EXISTS:", GOOGLE_API_KEY is not None)
-print("KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
-'''
+load_dotenv(ENV_PATH, override=True)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+print("================================")
+print("ENV PATH:", ENV_PATH)
+print("ENV EXISTS:", ENV_PATH.exists())
+print("GOOGLE_API_KEY EXISTS:", bool(GOOGLE_API_KEY))
+print("GOOGLE_API_KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
+print("================================")
+
+
 LLM_MODEL = "gemini-3.6-flash"  
 GOOGLE_API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -97,8 +102,8 @@ async def generate_llm_response(complaint_text: str, category: str, sentiment: s
                 }
             ],
             "generationConfig": {
-                "maxOutputTokens": 300,
-                "temperature": 0.4
+                "temperature": 0.4,
+                "maxOutputTokens": 2000
             }
         }
     
@@ -155,3 +160,106 @@ async def generate_llm_response(complaint_text: str, category: str, sentiment: s
         )
         
         
+        
+        
+async def get_sentiment_from_llm(text: str) -> str:
+
+    prompt = f"""
+Analyze the sentiment of the following facility management complaint.
+
+Return ONLY one word:
+positive
+negative
+neutral
+
+Complaint:
+{text}
+Answer:
+"""
+
+    try:
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0,
+                "maxOutputTokens": 20
+            }
+        }
+
+
+        print("SENTIMENT API KEY EXISTS:", bool(GOOGLE_API_KEY))
+        print("SENTIMENT API KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
+        print("SENTIMENT URL:", GOOGLE_API_URL)
+
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                GOOGLE_API_URL,
+                params={"key": GOOGLE_API_KEY},
+                json=payload
+            )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        print(">>>>>>>>>>. SENTIMENT FULL RESPONSE:")
+        print(data)
+
+        candidates = data.get("candidates", [])
+
+        if not candidates:
+            logger.warning(">>>>>>>>>>>> Gemini returned no candidates")
+            return "neutral"
+
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+
+        if not parts:
+            logger.warning(">>>>>>>>>>>> Gemini returned no parts")
+            return "neutral"
+        
+        
+        
+        sentiment_raw = (
+            data["candidates"][0]["content"]["parts"][0]["text"]
+            .strip()
+            .lower()
+        )
+
+        valid_sentiments = {
+            "positive",
+            "negative",
+            "neutral"
+        }
+
+        if sentiment_raw not in valid_sentiments:
+            logger.warning(
+                f"Unexpected sentiment value from Gemini: {sentiment_raw}"
+            )
+            return "neutral"
+
+        return sentiment_raw + "---------------"
+
+    except httpx.HTTPStatusError as e:
+        logger.error(
+            f"Gemini sentiment API error: "
+            f"{e.response.status_code} - {e.response.text}"
+        )
+        return "neutral"
+
+    except Exception as e:
+        logger.error(
+            f"Error during Gemini sentiment analysis: {e}"
+        )
+        return "neutral"
+    
+    

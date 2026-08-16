@@ -4,10 +4,14 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime
-import logging  
 
-
+import os
+import httpx
+import logging
+from pathlib import Path
+from dotenv import load_dotenv
 from database import engine, get_db, Base
+from llm_service import get_sentiment_from_llm
 
 from models import(
     Customer, Call, Ticket,
@@ -183,7 +187,6 @@ def get_call(call_id: int, db: Session = Depends(get_db)):
     return call
 
 
-# هنا لازم اسزي ملف  Bert classifer بناء علةى مودلي 
 
 
 #------------------------------------------------------
@@ -192,8 +195,6 @@ from pydantic import BaseModel
 from bert_classifier import ComplaintClassifier
 
 #app = FastAPI()
-
-# يتم تحميل BERT مرة واحدة عند تشغيل السيرفر
 #classifier = ComplaintClassifier("model")
 
 
@@ -218,49 +219,6 @@ def predict_complaint(request: ComplaintRequest):
 
 
 
-async def get_sentiment_from_llm(text: str) -> str:
-    """
-    يرسل النص إلى الـ LLM ويطلب تصنيف المشاعر
-    القيم المتوقعة: 'positive', 'negative', 'neutral'
-    """
-    prompt = f"""Analyze the sentiment of the following complaint and return only one word from these options:
-            positive, negative, neutral
-
-            Text: "{text}"
-
-            Answer (one word only):"""
-
-
-    try:
-        response = await llm_client.chat.completions.create(
-            model="your-model-name",  # عدّل حسب المزود (مثلاً gpt-4o-mini أو غيره)
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an accurate sentiment analyzer. Reply with only one word and no explanation."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0,
-            max_tokens=5
-        )
-        sentiment_raw = response.choices[0].message.content.strip().lower()
-
-        # تحقق من أن القيمة ضمن القيم المسموحة، وإلا استخدم قيمة افتراضية
-        valid_sentiments = {"positive", "negative", "neutral"}
-        if sentiment_raw not in valid_sentiments:
-            logger.warning(f"Unexpected sentiment value from LLM: {sentiment_raw}, defaulting to 'neutral'")
-            return "neutral"
-
-        return sentiment_raw
-
-    except Exception as e:
-        logger.error(f"Error during LLM sentiment analysis: {e}")
-        # في حال فشل الاستدعاء، نرجّع قيمة افتراضية بدل تعطيل الطلب بالكامل
-        return "neutral"
 
 # ===========================================================
 # ------------ PIPELINE -> BERT -> LLM -> Ticket------------
