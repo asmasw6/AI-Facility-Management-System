@@ -123,15 +123,15 @@ async def generate_llm_response(complaint_text: str, category: str, sentiment: s
             response.raise_for_status()
 
             data = response.json()
-            print("FULL GEMINI RESPONSE:")
-            print(data)
+            #print("FULL GEMINI RESPONSE:")
+            #print(data)
 
         # Extract generated text from Gemini response
         llm_text = (
             data["candidates"][0]["content"]["parts"][0]["text"]
         )
-        print("FULL LLM TEXT:")
-        print(repr(llm_text))
+        #print("FULL LLM TEXT:")
+        #print(repr(llm_text))
         return llm_text.strip()
 
     except httpx.HTTPStatusError as e:
@@ -174,7 +174,6 @@ neutral
 
 Complaint:
 {text}
-Answer:
 """
 
     try:
@@ -195,9 +194,9 @@ Answer:
         }
 
 
-        print("SENTIMENT API KEY EXISTS:", bool(GOOGLE_API_KEY))
-        print("SENTIMENT API KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
-        print("SENTIMENT URL:", GOOGLE_API_URL)
+        #print("SENTIMENT API KEY EXISTS:", bool(GOOGLE_API_KEY))
+        #print("SENTIMENT API KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
+        #print("SENTIMENT URL:", GOOGLE_API_URL)
 
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -211,8 +210,8 @@ Answer:
 
         data = response.json()
 
-        print(">>>>>>>>>>. SENTIMENT FULL RESPONSE:")
-        print(data)
+        #print(">>>>>>>>>>. SENTIMENT FULL RESPONSE:")
+        #print(data)
 
         candidates = data.get("candidates", [])
 
