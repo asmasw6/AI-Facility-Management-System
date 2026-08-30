@@ -20,13 +20,15 @@ load_dotenv(ENV_PATH, override=True)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+
+'''
 print("================================")
 print("ENV PATH:", ENV_PATH)
 print("ENV EXISTS:", ENV_PATH.exists())
 print("GOOGLE_API_KEY EXISTS:", bool(GOOGLE_API_KEY))
 print("GOOGLE_API_KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
 print("================================")
-
+'''
 
 LLM_MODEL = "gemini-3.6-flash"  
 GOOGLE_API_URL = (
@@ -189,7 +191,7 @@ Complaint:
             ],
             "generationConfig": {
                 "temperature": 0,
-                "maxOutputTokens": 20
+                "maxOutputTokens": 200
             }
         }
 
@@ -217,14 +219,14 @@ Complaint:
 
         if not candidates:
             logger.warning(">>>>>>>>>>>> Gemini returned no candidates")
-            return "neutral"
+            return ">>>>>>>> |||| >>>>>> 1 neutral"
 
         content = candidates[0].get("content", {})
         parts = content.get("parts", [])
 
         if not parts:
             logger.warning(">>>>>>>>>>>> Gemini returned no parts")
-            return "neutral"
+            return ">>>>>>>> |||| >>>>>> 2 neutral"
         
         
         
@@ -244,21 +246,21 @@ Complaint:
             logger.warning(
                 f"Unexpected sentiment value from Gemini: {sentiment_raw}"
             )
-            return "neutral"
+            return ">>>>>>>> |||| >>>>>> 3 neutral"
 
-        return sentiment_raw + "---------------"
+        return sentiment_raw 
 
     except httpx.HTTPStatusError as e:
         logger.error(
             f"Gemini sentiment API error: "
             f"{e.response.status_code} - {e.response.text}"
         )
-        return "neutral"
+        return ">>>>>>>> |||| >>>>>> 4 neutral"
 
     except Exception as e:
         logger.error(
             f"Error during Gemini sentiment analysis: {e}"
         )
-        return "neutral"
+        return ">>>>>>>> |||| >>>>>> 5 neutral"
     
     

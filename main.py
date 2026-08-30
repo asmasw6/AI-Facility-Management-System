@@ -40,13 +40,17 @@ app.add_middleware(
                )
 
 #classifier = ComplaintClassifier = None
+classifier = None
 
-@app.on_event("startup")
 def load_classifier():
     global classifier
     logger.info("Loading BERT classifier on startup...")
     classifier = ComplaintClassifier("model")
     logger.info("BERT classifier loaded successfully.")
+    
+@app.on_event("startup")
+def startup_event():
+    load_classifier()
     
 # --------------------- >>>>>>>>>>>>>>>>>>>>>>> -----------------------------   
 def determine_priority(category: str, sentiment: str, confidence: float, complaint_text: str) -> TicketPriority:
@@ -335,3 +339,5 @@ def update_ticket(ticket_id: int, payload: TicketUpdate, db: Session = Depends(g
 @app.get("/")
 def health_check():
     return {"status": "running", "model_loaded": classifier is not None}
+
+# -------------------------------------------------------------
