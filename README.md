@@ -22,6 +22,11 @@ Ticket Creation ->
 AI-Generated Customer Response ->
 Database
 
+## Example
+![Executive Overview](Cap.PNG)
+
+
+
 ## Future Improvements
 
 - Add real-time voice call simulation with speech-to-text and text-to-speech capabilities.
