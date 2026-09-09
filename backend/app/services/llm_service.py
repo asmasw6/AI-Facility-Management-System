@@ -3,8 +3,15 @@ import httpx
 import logging  
 from dotenv import load_dotenv
 from pathlib import Path
+from app.models.models import TicketPriority
 
 
+# Hide HTTPX / HTTPCore request logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+logging.getLogger("httpx").disabled = True
+logging.getLogger("httpcore").disabled = True
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +26,6 @@ print("ENV EXISTS:", ENV_PATH.exists())
 load_dotenv(ENV_PATH, override=True)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
 
 '''
 print("================================")
@@ -164,8 +170,57 @@ async def generate_llm_response(complaint_text: str, category: str, sentiment: s
         
         
         
-async def get_sentiment_from_llm(text: str) -> str:
 
+
+import asyncio
+    
+import random
+
+def determine_priority(category: str, sentiment: str, confidence: float, complaint_text: str) -> TicketPriority:
+    """
+    Determine the priority of a ticket based on its category.
+    Adjust the logic as needed for your specific use case.
+    """
+    urgent_categories = { "Electricity Issue","Security Complaint",
+                         "Plumbing Issue","Water Supply Request",}
+
+    urgent_keywords = ["fire","smoke","electrical hazard","electric shock","gas leak",
+                       "water leaking near electrical", "water leak near electrical",
+                       "flooding", "flood","no electricity","power outage",
+                       "elevator stuck", "emergency", "sparks","short circuit",]
+
+    high_keywords = ["leaking","water leak","leakage","completely stopped",
+                     "not working", "broken","dangerous","damage",
+                     "very hot","no water",]
+
+    text = complaint_text.lower()
+
+    # 1. Immediate safety/emergency issues
+    if any(keyword in text for keyword in urgent_keywords):
+        return TicketPriority.URGENT
+
+    # 2. Serious facility categories
+    if category in urgent_categories:
+        return TicketPriority.HIGH
+
+    # 3. Serious wording in the complaint
+    if any(keyword in text for keyword in high_keywords):
+        return TicketPriority.HIGH
+
+    # 4. Customer sentiment
+    if sentiment == "negative":
+        return TicketPriority.MEDIUM
+
+    # 5. Low model confidence
+    if confidence < 0.5:
+        return TicketPriority.MEDIUM
+
+    return TicketPriority.LOW
+
+
+# Sentiment Analysis
+#-------------------------------------------------------
+async def get_sentiment_from_llm(text: str, max_retries: int = 3) -> str:
     prompt = f"""
 Analyze the sentiment of the following facility management complaint.
 
@@ -178,89 +233,69 @@ Complaint:
 {text}
 """
 
-    try:
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0,
-                "maxOutputTokens": 200
-            }
+    payload = {
+        "contents": [
+            {"parts": [{"text": prompt}]}
+        ],
+        "generationConfig": {
+            "temperature": 0,
+            "maxOutputTokens": 200
         }
+    }
 
+    valid_sentiments = {"positive", "negative", "neutral"}
 
-        #print("SENTIMENT API KEY EXISTS:", bool(GOOGLE_API_KEY))
-        #print("SENTIMENT API KEY LENGTH:", len(GOOGLE_API_KEY) if GOOGLE_API_KEY else 0)
-        #print("SENTIMENT URL:", GOOGLE_API_URL)
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    GOOGLE_API_URL,
+                    params={"key": GOOGLE_API_KEY},
+                    json=payload
+                )
 
+            # لو 503 أو 429 (rate limit) نعيد المحاولة بدل ما نستسلم فوراً
+            if response.status_code in (503, 429):
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                logger.warning(
+                    f"Gemini overloaded ({response.status_code}), "
+                    f"retry {attempt + 1}/{max_retries} after {wait_time:.1f}s"
+                )
+                await asyncio.sleep(wait_time)
+                continue
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                GOOGLE_API_URL,
-                params={"key": GOOGLE_API_KEY},
-                json=payload
+            response.raise_for_status()
+            data = response.json()
+
+            candidates = data.get("candidates", [])
+            if not candidates:
+                logger.warning("Gemini returned no candidates")
+                return "neutral"
+
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if not parts:
+                logger.warning("Gemini returned no parts")
+                return "neutral"
+
+            sentiment_raw = parts[0].get("text", "").strip().lower()
+
+            if sentiment_raw not in valid_sentiments:
+                logger.warning(f"Unexpected sentiment value from Gemini: {sentiment_raw!r}")
+                return "neutral"
+
+            return sentiment_raw
+
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Gemini sentiment API error: {e.response.status_code} - {e.response.text}"
             )
+            # لو خطأ مو 503/429 (مثلاً 400 أو 401) ما فيه فايدة نعيد المحاولة
+            if e.response.status_code not in (503, 429):
+                return "neutral"
 
-        response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Error during Gemini sentiment analysis: {e}")
+            return "neutral"
 
-        data = response.json()
-
-        #print(">>>>>>>>>>. SENTIMENT FULL RESPONSE:")
-        #print(data)
-
-        candidates = data.get("candidates", [])
-
-        if not candidates:
-            logger.warning(">>>>>>>>>>>> Gemini returned no candidates")
-            return ">>>>>>>> |||| >>>>>> 1 neutral"
-
-        content = candidates[0].get("content", {})
-        parts = content.get("parts", [])
-
-        if not parts:
-            logger.warning(">>>>>>>>>>>> Gemini returned no parts")
-            return ">>>>>>>> |||| >>>>>> 2 neutral"
-        
-        
-        
-        sentiment_raw = (
-            data["candidates"][0]["content"]["parts"][0]["text"]
-            .strip()
-            .lower()
-        )
-
-        valid_sentiments = {
-            "positive",
-            "negative",
-            "neutral"
-        }
-
-        if sentiment_raw not in valid_sentiments:
-            logger.warning(
-                f"Unexpected sentiment value from Gemini: {sentiment_raw}"
-            )
-            return ">>>>>>>> |||| >>>>>> 3 neutral"
-
-        return sentiment_raw 
-
-    except httpx.HTTPStatusError as e:
-        logger.error(
-            f"Gemini sentiment API error: "
-            f"{e.response.status_code} - {e.response.text}"
-        )
-        return ">>>>>>>> |||| >>>>>> 4 neutral"
-
-    except Exception as e:
-        logger.error(
-            f"Error during Gemini sentiment analysis: {e}"
-        )
-        return ">>>>>>>> |||| >>>>>> 5 neutral"
-    
-    
+    logger.error("Gemini sentiment analysis failed after all retries — defaulting to neutral")
+    return "neutral"

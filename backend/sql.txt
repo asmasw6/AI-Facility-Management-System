@@ -10,22 +10,23 @@ import httpx
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from database import engine, get_db, Base
-from llm_service import get_sentiment_from_llm
+from app.schemas.database import engine, get_db, Base
+from app.services.llm_service import get_sentiment_from_llm, generate_llm_response
 
-from models import(
-    Customer, Call, Ticket,
-    CustomerCreate, CustomerResponse,
-    CallCreate, CallEnd, CallResponse,
-    ProcessCallRequest, TicketResponse, TicketUpdate,
-    TicketStatus, TicketPriority,
+from app.models.models import(
+      Customer,Call,Ticket,Building,Apartment,CustomerCreate,
+      CustomerResponse,CallCreate,CallEnd,CallResponse,
+      ProcessCallRequest,BuildingCreate,BuildingResponse,
+      ApartmentCreate,ApartmentResponse,TicketResponse,
+      TicketUpdate,TicketStatus,TicketPriority,
 )
 
-from bert_classifier import ComplaintClassifier
+from app.services.bert_classifier import ComplaintClassifier
 #  llm service 
-from llm_service import generate_llm_response
 
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
@@ -121,6 +122,186 @@ def determine_priority(category: str, sentiment: str, confidence: float, complai
     return TicketPriority.LOW
 
 
+
+
+# ===========================================================
+#       -------------- BUILDING endpoints --------------
+# ===========================================================
+
+@app.post("/buildings/", response_model=BuildingResponse)
+def create_building(
+    building: BuildingCreate,
+    db: Session = Depends(get_db)
+):
+
+    existing_building = (
+        db.query(Building)
+        .filter(Building.building_name == building.building_name)
+        .first()
+    )
+
+    if existing_building:
+        raise HTTPException(
+            status_code=400,
+            detail="Building already exists"
+        )
+
+    new_building = Building(
+        building_name=building.building_name
+    )
+
+    db.add(new_building)
+    db.commit()
+    db.refresh(new_building)
+
+    return new_building
+
+
+@app.get("/buildings/", response_model=list[BuildingResponse])
+def list_buildings( db: Session = Depends(get_db)):
+
+    return (
+        db.query(Building)
+        .order_by(Building.building_id)
+        .all()
+    )
+    
+@app.get("/buildings/{building_id}", response_model=BuildingResponse)
+def get_building(
+    building_id: int,
+    db: Session = Depends(get_db)
+):
+
+    building = (
+        db.query(Building)
+        .filter(Building.building_id == building_id)
+        .first()
+    )
+
+    if not building:
+        raise HTTPException(
+            status_code=404,
+            detail="Building not found"
+        )
+
+    return building
+    
+# ===========================================================
+#       -------------- APARTMENT endpoints --------------
+# ===========================================================
+
+@app.post("/apartments/", response_model=ApartmentResponse)
+def create_apartment(
+    apartment: ApartmentCreate,
+    db: Session = Depends(get_db)
+):
+
+    # Check building exists
+    building = (
+        db.query(Building)
+        .filter(Building.building_id == apartment.building_id)
+        .first()
+    )
+
+    if not building:
+        raise HTTPException(
+            status_code=404,
+            detail="Building not found"
+        )
+
+    # Check apartment does not already exist
+    existing_apartment = (
+        db.query(Apartment)
+        .filter(
+            Apartment.building_id == apartment.building_id,
+            Apartment.apartment_number == apartment.apartment_number
+        )
+        .first()
+    )
+
+    if existing_apartment:
+        raise HTTPException(
+            status_code=400,
+            detail="Apartment already exists in this building"
+        )
+
+    new_apartment = Apartment(
+        apartment_number=apartment.apartment_number,
+        building_id=apartment.building_id
+    )
+
+    db.add(new_apartment)
+    db.commit()
+    db.refresh(new_apartment)
+
+    return new_apartment
+
+
+@app.get("/apartments/", response_model=list[ApartmentResponse])
+def list_apartments(
+    db: Session = Depends(get_db)
+):
+
+    return (
+        db.query(Apartment)
+        .order_by(
+            Apartment.building_id,
+            Apartment.apartment_id
+        )
+        .all()
+    )
+    
+@app.get(
+    "/apartments/{apartment_id}",
+    response_model=ApartmentResponse
+)
+def get_apartment(
+    apartment_id: int,
+    db: Session = Depends(get_db)
+):
+
+    apartment = (
+        db.query(Apartment)
+        .filter(Apartment.apartment_id == apartment_id)
+        .first()
+    )
+
+    if not apartment:
+        raise HTTPException(
+            status_code=404,
+            detail="Apartment not found"
+        )
+
+    return apartment
+
+@app.get(
+    "/buildings/{building_id}/apartments",
+    response_model=list[ApartmentResponse]
+)
+def list_building_apartments(
+    building_id: int,
+    db: Session = Depends(get_db)
+):
+
+    building = (
+        db.query(Building)
+        .filter(Building.building_id == building_id)
+        .first()
+    )
+
+    if not building:
+        raise HTTPException(
+            status_code=404,
+            detail="Building not found"
+        )
+
+    return (
+        db.query(Apartment)
+        .filter(Apartment.building_id == building_id)
+        .order_by(Apartment.apartment_id)
+        .all()
+    )
+
 # ===========================================================
 #       -------------- CUSTOMER endpoints --------------
 # ===========================================================
@@ -196,7 +377,6 @@ def get_call(call_id: int, db: Session = Depends(get_db)):
 #------------------------------------------------------
 from fastapi import FastAPI
 from pydantic import BaseModel
-from bert_classifier import ComplaintClassifier
 
 #app = FastAPI()
 #classifier = ComplaintClassifier("model")
@@ -230,21 +410,51 @@ def predict_complaint(request: ComplaintRequest):
 
 @app.post("/process-call", response_model=TicketResponse)
 async def process_call(request: ProcessCallRequest, db: Session = Depends(get_db)):
-    
+    # 1. Check BERT classifier
     if classifier is None:
         raise HTTPException(status_code=503, detail="BERT classifier is not loaded yet")    
     
+    # 2. Get Customer
     customer = db.query(Customer).filter(Customer.customer_id == request.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")     
     
+    # 3. Get Call if provided
     if request.call_id is not None:
         call = db.query(Call).filter(Call.call_id == request.call_id).first()
         if not call:
             raise HTTPException(status_code=404, detail="Call not found")          
-
     
-    # 1) BERT: classification and confidence
+    # Optional: make sure the call belongs to this customer
+        if call.customer_id != request.customer_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Call does not belong to this customer"
+            )
+
+    # 4. Get Apartment
+    apartment = customer.apartment
+
+    if not apartment:
+        raise HTTPException(
+            status_code=400,
+            detail="Customer is not assigned to an apartment"
+        )
+
+    # 5. Get Building
+    building = apartment.building
+
+    if not building:
+        raise HTTPException(
+            status_code=400,
+            detail="Apartment is not assigned to a building"
+        )
+
+    building_number = building.building_name.value
+    apartment_number = apartment.apartment_number.value
+
+   
+    # 7. BERT: classification and confidence
     try:
         category, confidence = classifier.predict(request.text)
     except Exception as e:
@@ -253,27 +463,29 @@ async def process_call(request: ProcessCallRequest, db: Session = Depends(get_db
     
     # 🔴🔴
     
-    # 2) LLM: sentiment analysis
+    # 8. LLM: sentiment analysis
     sentiment = await get_sentiment_from_llm(request.text)
     print(f">>>>>>>>>>>>>> LLM sentiment analysis result: {sentiment}")
     
+    # 9. Determine Ticket Priority
     priority = determine_priority(category, sentiment, confidence, request.text)
     
 
-    # 2) LLM: Build prompt and call API
+    # 10. LLM: Build prompt and call API
     
     ai_response = await generate_llm_response(
         complaint_text=request.text,
         category=category,
         sentiment=sentiment,
         priority=priority.value,
-        building_number=customer.name,     
-        apartment_number=str(request.customer_id),
+        building_number=building_number,     
+        apartment_number=apartment_number,
     )
-    # 3) save Ticket
+    # 11. Create Ticket
     new_ticket = Ticket(
         customer_id=request.customer_id,
         call_id=request.call_id,
+        apartment_id=apartment.apartment_id,
         issue_description=request.text,
         predicted_category=category,
         priority=priority,
@@ -281,11 +493,20 @@ async def process_call(request: ProcessCallRequest, db: Session = Depends(get_db
         ai_response=ai_response,
     )
     
+    # 12. Save Ticket to DB
+    
     db.add(new_ticket)
     db.commit()
     db.refresh(new_ticket)
     
-    logger.info(f"Ticket #{new_ticket.ticket_id} created (priority={priority}).")
+    logger.info(
+        f"Ticket #{new_ticket.ticket_id} created | "
+        f"Building={building_number} | "
+        f"Apartment={apartment_number} | "
+        f"Category={category} | "
+        f"Priority={priority.value}"
+    )    
+    
     return new_ticket
 
     
@@ -341,3 +562,40 @@ def health_check():
     return {"status": "running", "model_loaded": classifier is not None}
 
 # -------------------------------------------------------------
+
+
+database.py 
+
+
+
+
+from sqlalchemy import create_engine 
+from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv 
+import os 
+
+load_dotenv()
+
+# PostgreSQL: postgresql://user:password@localhost:5432/facility_db
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in .env")
+
+engine = create_engine(DATABASE_URL, echo=True)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+def get_db():
+
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        
+     S

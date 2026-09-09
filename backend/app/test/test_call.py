@@ -51,6 +51,7 @@ async def test_call():
             )
 
             print("-" * 50)
+            print(f"Complaint   : {complaint}")
             print(f"Category   : {category}")
             print(f"Confidence : {confidence:.2f}")
             print(f"Sentiment  : {sentiment}")

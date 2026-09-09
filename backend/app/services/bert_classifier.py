@@ -72,7 +72,7 @@ class ComplaintClassifier:
 
         return category, confidence
 
-
+'''
 if __name__ == "__main__":
     classifier = ComplaintClassifier("model")
 
@@ -85,3 +85,5 @@ if __name__ == "__main__":
 
     print("Category:", category)
     print("Confidence:", round(confidence, 4))
+    
+'''
