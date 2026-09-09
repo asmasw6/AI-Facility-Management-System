@@ -79,21 +79,21 @@ The system uses an AI Agent built with LangGraph to orchestrate and make decisio
                          │      MongoDB         │
                          └──────────────────────┘
 
-📸 Screenshots
-### Home
+## Screenshots
+#### Home
 
 The main dashboard provides an overview of the facility management system, and allows users to access the complaint management workflow.
-![Executive Overview](Cap.PNG)
+![Executive Overview](home.PNG)
 
-### Complaints
+#### Complaints
 
 Users can view and monitor their submitted maintenance complaints, including ticket status, priority, and category.
-![Executive Overview](Cap.PNG)
+![Executive Overview](complaints.PNG)
 
-### Complaint Details
+#### Complaint Details
 
 Provides detailed information about an individual complaint, including the detected category, priority, status, AI-generated response, and complaint information.
-![Executive Overview](Cap.PNG)
+![Executive Overview](dtails1.PNG)
 
 
 
@@ -108,8 +108,13 @@ Provides detailed information about an individual complaint, including the detec
 ## Technologies
 
 AI Agent: LangGraph
+
 NLP Classification: BERT / Hugging Face Transformers
+
 LLM: Google Gemini
+
 Backend: FastAPI / Python
+
 Database: MongoDB / PyMongo
+
 Frontend: React / Tailwind CSS
