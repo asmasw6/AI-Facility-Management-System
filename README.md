@@ -93,7 +93,7 @@ Users can view and monitor their submitted maintenance complaints, including tic
 #### Complaint Details
 
 Provides detailed information about an individual complaint, including the detected category, priority, status, AI-generated response, and complaint information.
-![Executive Overview](details1.PNG)
+![Executive Overview](detailsv1.PNG)
 ![Executive Overview](details2.PNG)
 
 
