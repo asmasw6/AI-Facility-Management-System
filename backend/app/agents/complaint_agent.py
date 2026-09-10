@@ -39,7 +39,12 @@ class ComplaintState(TypedDict, total=False):
     confidence: float
     sentiment: str
     priority: str
+    route: str
+    routing_team: str
+    priority_reason: str
     ai_response: str
+    
+
 
     # Result
     ticket_id: str
@@ -365,6 +370,22 @@ def build_complaint_agent():
         determine_ticket_priority
     )
 
+    # Agent Decision Paths
+    graph.add_node(
+        "emergency_path",
+        emergency_path
+    )
+
+    graph.add_node(
+        "fast_track_path",
+        fast_track_path
+    )
+
+    graph.add_node(
+        "standard_path",
+        standard_path
+    )
+
     graph.add_node(
         "generate_response",
         generate_customer_response
@@ -397,8 +418,30 @@ def build_complaint_agent():
         "determine_priority"
     )
 
-    graph.add_edge(
+    # Agent Decision
+    graph.add_conditional_edges(
         "determine_priority",
+        route_by_priority,
+        {
+            "emergency": "emergency_path",
+            "fast_track": "fast_track_path",
+            "standard": "standard_path",
+        }
+    )
+
+    # All paths continue to response generation
+    graph.add_edge(
+        "emergency_path",
+        "generate_response"
+    )
+
+    graph.add_edge(
+        "fast_track_path",
+        "generate_response"
+    )
+
+    graph.add_edge(
+        "standard_path",
         "generate_response"
     )
 
