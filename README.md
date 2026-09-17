@@ -35,7 +35,7 @@ The system uses an AI Agent built with LangGraph to orchestrate and make decisio
                                     │
                                     ▼
                          ┌──────────────────────┐
-                         │   DistilBERT Classifier    │
+                         │ DistilBERT Classifier│
                          │ Complaint Category   │
                          │ + Confidence Score   │
                          └──────────┬───────────┘
