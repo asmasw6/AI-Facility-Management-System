@@ -4,7 +4,7 @@ An AI-powered facility management system designed to automate the processing and
 
 The system uses an AI Agent built with LangGraph to orchestrate and make decisions throughout the complaint-processing workflow. It automatically:
 
-1. Classifies complaints into facility management categories using a BERT-based NLP classifier
+1. Classifies complaints into facility management categories using a DistilBERT-based NLP classifier
 2. Detects customer sentiment using Google Gemini
 3. Determines ticket priority based on issue severity, complaint content, sentiment, and classification confidence
 4. Makes workflow decisions and routes complaints based on their priority
@@ -35,7 +35,7 @@ The system uses an AI Agent built with LangGraph to orchestrate and make decisio
                                     │
                                     ▼
                          ┌──────────────────────┐
-                         │   BERT Classifier    │
+                         │   DistilBERT Classifier    │
                          │ Complaint Category   │
                          │ + Confidence Score   │
                          └──────────┬───────────┘
@@ -110,7 +110,7 @@ Provides detailed information about an individual complaint, including the detec
 
 AI Agent: LangGraph
 
-NLP Classification: BERT / Hugging Face Transformers
+NLP Classification: DistilBERT / Hugging Face Transformers
 
 LLM: Google Gemini
 
