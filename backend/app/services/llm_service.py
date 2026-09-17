@@ -45,7 +45,7 @@ GOOGLE_API_URL = (
 
 
 
-def build_prompt(complaint_text: str, category: str, sentiment: str, priority: str,
+def build_prompt(complaint_text: str, category: str, sentiment: str, priority: str, customer_name: str,
                   building_number: str, apartment_number: str) -> str:
 
     sentiment_note = ""
@@ -57,42 +57,52 @@ def build_prompt(complaint_text: str, category: str, sentiment: str, priority: s
         )
 
     prompt = f"""
-    You are a professional customer service assistant for a Facility Management company.
+You are a professional customer service assistant for a Facility Management company.
 
-    Complaint Information:
-    - Customer complaint: "{complaint_text}"
-    - Issue category: {category}
-    - Building number: {building_number}
-    - Apartment number: {apartment_number}
-    - Customer sentiment: {sentiment}
-    - Priority level: {priority}
+Complaint Information:
+- Customer complaint: "{complaint_text}"
+- Issue category: "{category}"
+- Customer name: "{customer_name}"
+- Building number: "{building_number}"
+- Apartment number: "{apartment_number}"
+- Customer sentiment: "{sentiment}"
+- Priority level: "{priority}"
 
+{sentiment_note}
 
-    {sentiment_note}
+Your task is to write ONLY the customer-facing response.
 
-    Your task:
-1. Write a short and professional response to the customer, with a maximum of 3–4 sentences.
-2. Acknowledge that the complaint has been received.
-3. Clearly mention that the maintenance team responsible for "{category}" has been notified.
-4. Take the priority level into account when writing the response.
-5. Do not promise a specific resolution time unless a confirmed time is provided.
-6. If the customer is upset, use an empathetic and reassuring tone.
-7. Do not repeat unnecessary details such as the building or apartment number unless relevant.
-8. Do not invent information that is not provided.
-9. The response must be written entirely in English.
-10. Use simple, natural, and conversational English that sounds appropriate when converted to speech.
-11. Do not use bullet points, headings, emojis, or technical language.
-12. Return only the customer-facing response.
+STRICT REQUIREMENTS:
+1. You MUST address the customer using this exact name: "{customer_name}".
+2. You MUST mention the building number "{building_number}".
+3. You MUST mention the apartment number "{apartment_number}".
+4. You MUST confirm that the complaint has been received.
+5. You MUST state that the "{category}" maintenance team has been notified.
+6. The response must reflect the "{priority}" priority level.
+7. If the customer is upset, use an empathetic and reassuring tone.
+8. Do NOT invent, change, or omit the customer name, building number, or apartment number.
+9. Do NOT mention information that is not provided.
+10. Do not promise a specific resolution time.
+11. Write exactly 3-4 sentences.
+12. Write entirely in English.
+13. Use simple, natural, conversational English.
+14. Do not use bullet points, headings, emojis, or technical language.
+15. Return ONLY the customer-facing response.
 
-    Response:
-"""
+The response MUST contain:
+- Customer name: {customer_name}
+- Building: {building_number}
+- Apartment: {apartment_number}
+
+Response:
+    """
     return prompt
 
 async def generate_llm_response(complaint_text: str, category: str, sentiment: str, priority: str,
-                                 building_number: str, apartment_number: str) -> str:
+                                 customer_name: str, building_number: str, apartment_number: str) -> str:
     
     
-    prompt = build_prompt(complaint_text, category, sentiment, priority, building_number, apartment_number)
+    prompt = build_prompt(complaint_text, category, sentiment, priority, customer_name, building_number, apartment_number)
 
 
     headers = {

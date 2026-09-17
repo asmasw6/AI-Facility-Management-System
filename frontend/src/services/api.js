@@ -8,7 +8,7 @@ async function handleResponse(response, errorMessage) {
       const errorData = await response.json();
       message = errorData.detail || errorMessage;
     } catch {
-      // Keep default error message
+      // -----------
     }
 
     throw new Error(message);

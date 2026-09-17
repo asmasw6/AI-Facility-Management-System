@@ -44,6 +44,10 @@ class ComplaintState(TypedDict, total=False):
     priority_reason: str
     ai_response: str
     
+    
+    customer_name: str
+    building_number: str
+    apartment_number: str
 
 
     # Result
@@ -87,6 +91,7 @@ def load_customer_data(state: ComplaintState):
 
     return {
         "apartment_id": apartment_id,
+        "customer_name": customer["name"],
         "building_number": building["building_name"],
         "apartment_number": apartment["apartment_number"],
     }
@@ -289,8 +294,9 @@ async def generate_customer_response(state: ComplaintState):
         category=state["category"],
         sentiment=state["sentiment"],
         priority=state["priority"],
+        customer_name=state["customer_name"],
         building_number=state["building_number"],
-        apartment_number=state["apartment_number"],
+        apartment_number=state["apartment_number"]
     )
 
     return {
@@ -307,6 +313,7 @@ def create_ticket(state: ComplaintState):
 
     if state.get("call_id"):
         call_id = ObjectId(state["call_id"])
+  
 
     ticket_data = {
     "customer_id": customer_id,
@@ -333,8 +340,9 @@ def create_ticket(state: ComplaintState):
 
     result = tickets_collection.insert_one(ticket_data)
 
+    
     return {
-        "ticket_id": str(result.inserted_id)
+        "ticket_id": str(result.inserted_id),
     }
     
  
