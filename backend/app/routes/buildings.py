@@ -1,4 +1,7 @@
 
+from bson import ObjectId
+from bson.errors import InvalidId
+
 from fastapi import APIRouter, HTTPException
 from app.database import buildings_collection
 from app.models.models import BuildingCreate, BuildingResponse
@@ -44,7 +47,7 @@ def create_building(building: BuildingCreate):
 # GET ALL BUILDINGS
 # =========================================================
 
-@router.get("/" )  # response_model=list[BuildingResponse]
+@router.get("/" ,response_model=list[BuildingResponse]  )
 def get_buildings():
 
     buildings = list(buildings_collection.find())
@@ -60,10 +63,7 @@ def get_buildings():
 # =========================================================
 @router.get("/{building_id}", response_model=BuildingResponse)
 def get_building(building_id: str):
-
-    from bson import ObjectId
-    from bson.errors import InvalidId
-
+  
     try:
         object_id = ObjectId(building_id)
     except InvalidId:

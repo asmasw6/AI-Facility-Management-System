@@ -31,6 +31,7 @@ class ComplaintState(TypedDict, total=False):
 
     # Database information
     apartment_id: ObjectId
+    customer_name: str
     building_number: str
     apartment_number: str
 
@@ -45,11 +46,6 @@ class ComplaintState(TypedDict, total=False):
     ai_response: str
     
     
-    customer_name: str
-    building_number: str
-    apartment_number: str
-
-
     # Result
     ticket_id: str
     
@@ -96,7 +92,7 @@ def load_customer_data(state: ComplaintState):
         "apartment_number": apartment["apartment_number"],
     }
     
-    
+# 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴    
 # 2. Node: Check from call
 #-------------------------------------------------------------
 def validate_call(state: ComplaintState):
@@ -353,6 +349,7 @@ def build_complaint_agent():
 
     graph = StateGraph(ComplaintState)
 
+    # ------ Add nodes to the graph ------
     graph.add_node(
         "load_customer_data",
         load_customer_data
@@ -403,8 +400,11 @@ def build_complaint_agent():
         "create_ticket",
         create_ticket
     )
-
+    
+    # ------ Set the entry point of the graph ------
     graph.set_entry_point("load_customer_data")
+
+    # ------ Define edges between nodes ------
 
     graph.add_edge(
         "load_customer_data",
@@ -426,7 +426,7 @@ def build_complaint_agent():
         "determine_priority"
     )
 
-    # Agent Decision
+    # ------ Agent Decision ------
     graph.add_conditional_edges(
         "determine_priority",
         route_by_priority,

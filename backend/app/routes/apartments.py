@@ -105,6 +105,12 @@ def get_apartments_by_building(building_id: str):
         })
     )
 
+    """
+    {
+    "_id": ObjectId("..."),
+    "building_id": ObjectId("...")
+    }
+    """
     for apartment in apartments:
         apartment["_id"] = str(apartment["_id"])
         apartment["building_id"] = str(apartment["building_id"])
@@ -141,3 +147,5 @@ def get_apartment(apartment_id: str):
     apartment["building_id"] = str(apartment["building_id"])
 
     return apartment
+
+

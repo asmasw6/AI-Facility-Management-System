@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from bson.errors import InvalidId
 from bson import ObjectId
+from app.database import tickets_collection
 
 from app.models.models import (
     ProcessCallRequest,
@@ -33,8 +34,7 @@ async def process_call(request: ProcessCallRequest):
                 detail="Agent failed to create ticket"
             )
 
-        from app.database import tickets_collection
-
+        
         ticket = tickets_collection.find_one({
             "_id": ObjectId(ticket_id)
         })
@@ -81,6 +81,28 @@ async def process_call(request: ProcessCallRequest):
             status_code=500,
             detail=f"Agent processing error: {str(e)}"
         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

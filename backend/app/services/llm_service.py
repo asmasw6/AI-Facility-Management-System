@@ -4,6 +4,8 @@ import logging
 from dotenv import load_dotenv
 from pathlib import Path
 from app.models.models import TicketPriority
+import asyncio
+import random
 
 
 # Hide HTTPX / HTTPCore request logs
@@ -98,6 +100,9 @@ Response:
     """
     return prompt
 
+
+
+
 async def generate_llm_response(complaint_text: str, category: str, sentiment: str, priority: str,
                                  customer_name: str, building_number: str, apartment_number: str) -> str:
     
@@ -179,12 +184,7 @@ async def generate_llm_response(complaint_text: str, category: str, sentiment: s
         
         
         
-        
-
-
-import asyncio
-    
-import random
+ 
 
 def determine_priority(category: str, sentiment: str, confidence: float, complaint_text: str) -> TicketPriority:
     """
@@ -263,8 +263,8 @@ Complaint:
                     params={"key": GOOGLE_API_KEY},
                     json=payload
                 )
+            
 
-            # لو 503 أو 429 (rate limit) نعيد المحاولة بدل ما نستسلم فوراً
             if response.status_code in (503, 429):
                 wait_time = (2 ** attempt) + random.uniform(0, 1)
                 logger.warning(
@@ -299,7 +299,6 @@ Complaint:
             logger.error(
                 f"Gemini sentiment API error: {e.response.status_code} - {e.response.text}"
             )
-            # لو خطأ مو 503/429 (مثلاً 400 أو 401) ما فيه فايدة نعيد المحاولة
             if e.response.status_code not in (503, 429):
                 return "neutral"
 

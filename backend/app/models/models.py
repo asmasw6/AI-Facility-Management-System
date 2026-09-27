@@ -72,9 +72,9 @@ class ApartmentCreate(MongoBaseModel):
 
 
 class ApartmentResponse(MongoBaseModel):
-    id: str = Field(alias="_id")
-    apartment_number: ApartmentNum
-    building_id: str
+    id: str = Field(alias="_id")# 7878 , 7854
+    apartment_number: ApartmentNum #201, 201
+    building_id: str # A, B
 
 
 # =========================================================
@@ -85,7 +85,7 @@ class CustomerCreate(MongoBaseModel):
     name: str
     phone: Optional[str] = None
     email: Optional[str] = None
-    apartment_id: str
+    apartment_id: str # id= 7854 , ap-num= 201, Building= B
 
 
 class CustomerResponse(MongoBaseModel):
