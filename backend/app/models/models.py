@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional
 from datetime import datetime
 from enum import Enum
@@ -25,6 +25,11 @@ class TicketPriority(str, Enum):
 class BuildingName(str, Enum):
     A = "A"
     B = "B"
+
+
+class RegistrationStatus(str, Enum):
+    AVAILABLE = "available"
+    REGISTERED = "registered"
 
 
 class ApartmentNum(str, Enum):
@@ -68,25 +73,36 @@ class BuildingResponse(MongoBaseModel):
 
 class ApartmentCreate(MongoBaseModel):
     apartment_number: ApartmentNum
-    building_id: str
-
+    building_id: str    
 
 class ApartmentResponse(MongoBaseModel):
     id: str = Field(alias="_id")# 7878 , 7854
     apartment_number: ApartmentNum #201, 201
     building_id: str # A, B
+    apartment_code: str  # A-201, B-202, from the building name and apartment number
+    registration_code: str  # Unique code for registration
+    registration_status: RegistrationStatus
 
 
 # =========================================================
 # CUSTOMER
 # =========================================================
-
+'''
 class CustomerCreate(MongoBaseModel):
     name: str
     phone: Optional[str] = None
     email: Optional[str] = None
-    apartment_id: str # id= 7854 , ap-num= 201, Building= B
+    apartment_id: str # id= 7854 , ap-num= 201, Building= B  
+'''
+"""
+Name
+Phone
+Email
+Password
+Apartment Code: A-201
+Registration Code: 839274 by the building management
 
+""" 
 
 class CustomerResponse(MongoBaseModel):
     id: str = Field(alias="_id")
@@ -96,7 +112,24 @@ class CustomerResponse(MongoBaseModel):
     apartment_id: str
     created_at: datetime
 
-
+class CustomerRegister(MongoBaseModel):
+    name: str
+    phone: str
+    email: EmailStr
+    password: str
+    apartment_code: str  # id= 7854 , ap-num= 201, Building= B
+    registration_code: str  # Unique code for registration
+    
+# Login
+class CustomerLogin(MongoBaseModel):
+    email: EmailStr
+    password: str
+    
+class LoginResponse(MongoBaseModel):
+    access_token: str
+    token_type: str
+    customer: CustomerResponse
+   
 # =========================================================
 # CALL
 # =========================================================
@@ -120,16 +153,49 @@ class CallResponse(MongoBaseModel):
     ended_at: Optional[datetime] = None
     duration: Optional[int] = None
     audio_url: Optional[str] = None
+    
+#=========================================================
+# Voice Response
+#=========================================================
+class VoiceResponse(MongoBaseModel):
 
+    call_id: str
+    customer_id: str
+    transcript: str
+
+    category: Optional[str] = None
+    confidence: Optional[float] = None
+    sentiment: Optional[str] = None
+    priority: Optional[str] = None
+    routing_team: Optional[str] = None
+
+    ai_response: Optional[str] = None
+    ticket_id: Optional[str] = None
+  
+  
+#=========================================================
+# TTS
+#=========================================================  
+class TTSRequest(BaseModel):
+    text: str
+      
+#=========================================================
+# Complaints
+# =========================================================
+
+
+class ComplaintRequest(BaseModel):
+    customer_id: str
+    call_id: Optional[str] = None
+    text: str
 
 # =========================================================
 # TICKET
 # =========================================================
 
 class ProcessCallRequest(MongoBaseModel):
-    customer_id: str
-    call_id: Optional[str] = None
-
+    #customer_id: str
+    #call_id: Optional[str] = None
     text: str = Field(
         ...,
         description="Text extracted from the customer's call transcript, which describes the issue they are facing.>>>"
@@ -138,7 +204,7 @@ class ProcessCallRequest(MongoBaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "customer_id": "68b123456789abcdef123456",
+                #"customer_id": "68b123456789abcdef123456",
                 "call_id": "68b987654321abcdef123456",
                 "text": "The air conditioner is leaking water and is no longer cooling the apartment."
             }

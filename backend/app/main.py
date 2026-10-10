@@ -8,6 +8,7 @@ from app.routes.customers import router as customers_router
 from app.routes.calls import router as calls_router
 from app.routes.tickets import router as tickets_router
 from app.routes.ai import router as ai_router
+from app.routes.auth import router as auth_router
 from app.routes.process_call import router as process_call_router
 
 app = FastAPI(
@@ -47,6 +48,13 @@ app.include_router(
 
 
 app.include_router(
+    auth_router,
+    prefix="/api/auth",
+    tags=["Authentication"]
+)
+
+
+app.include_router(
     calls_router,
     prefix="/api/calls",
     tags=["Calls"]
@@ -71,6 +79,8 @@ app.include_router(
     prefix="/api/process-call",
     tags=["Process Call"]
 )
+
+
 
 
 

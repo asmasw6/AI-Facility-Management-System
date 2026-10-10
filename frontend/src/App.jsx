@@ -8,6 +8,8 @@ import ComplaintDetails from "./pages/ComplaintDetails";
 import Dashboard from "./pages/Dashboard";
 import Complaints from "./pages/Complaints";
 import Analytics from "./pages/Analytics";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 
 
@@ -20,6 +22,8 @@ function App() {
       <main>
         <Routes>
           {/* User */}
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Home />} />
           <Route path="/complaints" element={<MyComplaints />} />
           <Route path="/complaints/:id"element={<ComplaintDetails />}/>

@@ -5,69 +5,10 @@ from bson.errors import InvalidId
 from datetime import datetime, timezone
 
 from app.database import customers_collection, apartments_collection
-from app.models.models import CustomerCreate, CustomerResponse
+from app.models.models import  CustomerResponse
 
 router = APIRouter()
-
-
-# Create Customer
-@router.post("/", response_model=CustomerResponse)
-def create_customer(customer: CustomerCreate):
-
-    # Validate apartment_id
-    try:
-        apartment_id = ObjectId(customer.apartment_id)
-    except InvalidId:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid apartment ID"
-        )
-
-    # Check apartment exists
-    apartment = apartments_collection.find_one({
-        "_id": apartment_id
-    })
-
-    if not apartment:
-        raise HTTPException(
-            status_code=404,
-            detail="Apartment not found"
-        )
-
-    # Check if phone already exists
-    if customer.phone:
-        existing_customer = customers_collection.find_one({
-            "phone": customer.phone
-        })
-
-        if existing_customer:
-            raise HTTPException(
-                status_code=400,
-                detail="Customer with this phone already exists"
-            )
-
-    customer_data = {
-        "name": customer.name,
-        "phone": customer.phone,
-        "email": customer.email,
-        "apartment_id": apartment_id,
-        "created_at": datetime.now(timezone.utc)
-    }
-
-    result = customers_collection.insert_one(customer_data)
-
-    created_customer = customers_collection.find_one({
-        "_id": result.inserted_id
-    })
-
-    # Convert ObjectId to string
-    created_customer["_id"] = str(created_customer["_id"])
-    created_customer["apartment_id"] = str(
-        created_customer["apartment_id"]
-    )
-
-    return created_customer
-
+# register is instead of Create Customer 
 
 # Get All Customers
 @router.get("/", response_model=list[CustomerResponse])
@@ -144,3 +85,72 @@ def get_customers_by_apartment(apartment_id: str):
         )
 
     return customers
+
+
+
+
+
+
+
+
+
+
+'''
+@router.post("/", response_model=CustomerResponse)
+def create_customer(customer: CustomerCreate):
+
+    # Validate apartment_id
+    try:
+        apartment_id = ObjectId(customer.apartment_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid apartment ID"
+        )
+
+    # Check apartment exists
+    apartment = apartments_collection.find_one({
+        "_id": apartment_id
+    })
+
+    if not apartment:
+        raise HTTPException(
+            status_code=404,
+            detail="Apartment not found"
+        )
+
+    # Check if phone already exists
+    if customer.phone:
+        existing_customer = customers_collection.find_one({
+            "phone": customer.phone
+        })
+
+        if existing_customer:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer with this phone already exists"
+            )
+
+    customer_data = {
+        "name": customer.name,
+        "phone": customer.phone,
+        "email": customer.email,
+        "apartment_id": apartment_id,
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    result = customers_collection.insert_one(customer_data)
+
+    created_customer = customers_collection.find_one({
+        "_id": result.inserted_id
+    })
+
+    # Convert ObjectId to string
+    created_customer["_id"] = str(created_customer["_id"])
+    created_customer["apartment_id"] = str(
+        created_customer["apartment_id"]
+    )
+
+    return created_customer
+
+'''

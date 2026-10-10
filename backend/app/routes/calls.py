@@ -1,12 +1,22 @@
 
-
-from fastapi import APIRouter, HTTPException
+import os
+import uuid
+from fastapi import Depends, APIRouter, HTTPException , UploadFile, File, Form
 from bson import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime, timezone
 
+from app.services.speech_to_text import transcribe_audio
+
 from app.database import calls_collection, customers_collection
-from app.models.models import CallCreate, CallEnd, CallResponse
+from app.models.models import CallCreate, CallEnd, CallResponse, VoiceResponse, TTSRequest
+from app.routes.complaints import process_complaint
+from app.dependencies.auth import get_current_user
+
+from fastapi.responses import FileResponse
+from app.services.tts_service import text_to_speech
+
+from starlette.background import BackgroundTask
 
 router = APIRouter()
 
@@ -109,6 +119,7 @@ def get_call(call_id: str):
 
 # Get Calls by Customer
 @router.get(
+    # 
     "/customer/{customer_id}",
     response_model=list[CallResponse]
 )
@@ -201,3 +212,141 @@ def end_call(call_id: str, call_end: CallEnd):
     )
 
     return updated_call
+
+
+# Voice Upload Endpoint
+@router.post("/voice", response_model=VoiceResponse)
+async def voice_call(
+    audio: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    
+    # Get customer ID from JWT
+    customer_id = current_user["customer_id"]
+
+    # Validate customer_id from JWT
+    try:
+        object_id = ObjectId(customer_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid customer ID"
+        )
+
+    # Check customer exists
+    customer = customers_collection.find_one({
+        "_id": object_id
+    })
+
+    if not customer:
+        raise HTTPException(
+            status_code=404,
+            detail="Customer not found"
+        )
+        
+        
+    # check audio file
+    if not audio.content_type or not audio.content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid audio file"
+        )
+        
+        
+    # Create temporary directory
+    os.makedirs("temp_audio", exist_ok=True)     
+        
+    # Create unique filename
+    filename = f"{uuid.uuid4()}_{audio.filename}"
+    audio_path = os.path.join("temp_audio", filename)
+
+    
+    # save audio file
+    audio_content = await audio.read()
+    with open(audio_path, "wb") as f:
+        f.write(audio_content)
+
+    try:
+        # Speech-to-Text
+        transcript = transcribe_audio(audio_path)
+
+    finally:
+        # Delete temporary audio file
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+
+    print(  f"Received audio file: {audio.filename}, "
+            f"size: {len(audio_content)} bytes, "
+            f"content type: {audio.content_type}, "
+            f"transcript: {transcript}"
+        )
+    
+    # Create Call
+    call_data = {
+        "customer_id": object_id,
+        "transcript": transcript,
+        "started_at": datetime.now(timezone.utc),
+        "ended_at": None,
+        "duration": None,
+        "audio_url": audio.filename
+    }
+
+    result = calls_collection.insert_one(call_data)
+    
+    call_id = str(result.inserted_id)
+
+    agent_result =  await process_complaint(
+        customer_id=customer_id,
+        call_id=call_id,
+        text=transcript
+    )
+    
+    print("Agent result:", agent_result)
+
+    return VoiceResponse(
+    call_id=call_id,
+    customer_id=customer_id,
+    transcript=transcript,
+    category=agent_result.get("category"),
+    confidence=agent_result.get("confidence"),
+    sentiment=agent_result.get("sentiment"),
+    priority=agent_result.get("priority"),
+    routing_team=agent_result.get("routing_team"),
+    ai_response=agent_result.get("ai_response"),
+    ticket_id=agent_result.get("ticket_id")
+    )
+    
+    
+@router.post("/text-to-speech", response_class=FileResponse)
+async def generate_speech(request: TTSRequest):
+    if not request.text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Text cannot be empty"
+        )
+
+    try:
+        audio_path = await text_to_speech(request.text)
+    
+        return FileResponse(path=audio_path,
+                            media_type="audio/mpeg",
+                            filename="response.mp3",
+                            background=BackgroundTask(
+                            delete_file,
+                            audio_path)
+                        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"TTS generation failed: {str(e)}"
+        )
+
+
+
+def delete_file(file_path: str):
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Deleted temporary audio file: {file_path}")
+    except Exception as e:
+        print(f"Failed to delete file: {e}")
