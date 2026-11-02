@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import ComplaintResults from "../components/ComplaintResults";
 
 export default function Home() {
   // states
@@ -10,6 +11,7 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(false);
 
+  const [activeAudioText, setActiveAudioText] = useState(null);
   // MediaRecorder reference
   const mediaRecorderRef = useRef(null);
   // Store recorded audio chunks
@@ -197,14 +199,13 @@ export default function Home() {
   };
 
   // Play AI Response
-  const playAIResponse = async () => {
-    if (!result?.ai_response) {
-      return;
-    }
+  const playAIResponse = async (text) => {
+    if (!text) return;
 
     try {
       setError("");
       setPlayingAudio(true);
+      setActiveAudioText(text);
 
       // Stop currently playing audio
       if (audioRef.current) {
@@ -221,7 +222,7 @@ export default function Home() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            text: result.ai_response,
+            text,
           }),
         },
       );
@@ -234,7 +235,6 @@ export default function Home() {
 
       // Convert response to audio blob
       const blob = await response.blob();
-
       // Create temporary URL
       const url = URL.createObjectURL(blob);
 
@@ -242,21 +242,23 @@ export default function Home() {
 
       // Create audio object
       const audio = new Audio(url);
-
       audioRef.current = audio;
 
       // When audio finishes
       audio.onended = () => {
         setPlayingAudio(false);
+        setActiveAudioText(null);
+        audioRef.current = null;
+        URL.revokeObjectURL(url);
+        setAudioUrl(null);
       };
 
       // Play
       await audio.play();
     } catch (err) {
       console.error("TTS error:", err);
-
       setPlayingAudio(false);
-
+      setActiveAudioText(null);
       setError(err.message || "Could not play the AI response.");
     }
   };
@@ -382,125 +384,34 @@ export default function Home() {
           )}
 
           {/* Result */}
-
           {result && !loading && (
-            <div className="mt-8 space-y-5">
-              {/* User Message  */}
-
-              {result.transcript && (
-                <div className="rounded-xl bg-gray-50 p-5">
+            <>
+              {/* Original user message */}
+              {(Array.isArray(result)
+                ? result[0]?.transcript
+                : result.transcript) && (
+                <div className="mt-8 rounded-xl bg-gray-50 p-5">
                   <p className="text-sm font-semibold text-gray-500">
                     Your message
                   </p>
 
-                  <p className="mt-2 text-gray-800">{result.transcript}</p>
-                </div>
-              )}
-
-              {/* AI Response */}
-
-              {result.ai_response && (
-                <div className="rounded-xl bg-blue-50 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-blue-700">
-                      AI Assistant
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={playingAudio ? stopAIResponse : playAIResponse}
-                      className="rounded-full bg-white p-2 shadow-sm transition hover:bg-gray-100"
-                      title={
-                        playingAudio ? "Stop response" : "Listen to response"
-                      }
-                    >
-                      {playingAudio ? "⏹" : "🔊"}
-                    </button>
-                  </div>
-
-                  <p className="mt-3 text-gray-800">{result.ai_response}</p>
-                </div>
-              )}
-
-              {/*Classification Details*/}
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {result.category && (
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-500">
-                      Category
-                    </p>
-
-                    <p className="mt-1 font-medium text-gray-800">
-                      {result.category}
-                    </p>
-                  </div>
-                )}
-
-                {result.confidence !== undefined &&
-                  result.confidence !== null && (
-                    <div className="rounded-xl border border-gray-200 p-4">
-                      <p className="text-xs font-medium text-gray-500">
-                        Confidence
-                      </p>
-
-                      <p className="mt-1 font-medium text-gray-800">
-                        {(result.confidence * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  )}
-
-                {result.sentiment && (
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-500">
-                      Sentiment
-                    </p>
-
-                    <p className="mt-1 font-medium capitalize text-gray-800">
-                      {result.sentiment}
-                    </p>
-                  </div>
-                )}
-
-                {result.priority && (
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-500">
-                      Priority
-                    </p>
-
-                    <p className="mt-1 font-medium capitalize text-gray-800">
-                      {result.priority}
-                    </p>
-                  </div>
-                )}
-
-                {result.routing_team && (
-                  <div className="rounded-xl border border-gray-200 p-4 sm:col-span-2">
-                    <p className="text-xs font-medium text-gray-500">
-                      Assigned Team
-                    </p>
-
-                    <p className="mt-1 font-medium text-gray-800">
-                      {result.routing_team}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Ticket ID*/}
-
-              {result.ticket_id && (
-                <div className="rounded-xl bg-green-50 p-4">
-                  <p className="text-sm font-medium text-green-700">
-                    Complaint submitted successfully.
-                  </p>
-
-                  <p className="mt-1 text-xs text-green-600">
-                    Ticket ID: {result.ticket_id}
+                  <p className="mt-2 text-gray-800">
+                    {Array.isArray(result)
+                      ? result[0]?.transcript
+                      : result.transcript}
                   </p>
                 </div>
               )}
-            </div>
+
+              {/* Individual complaint result cards */}
+              <ComplaintResults
+                result={result}
+                playingAudio={playingAudio}
+                activeAudioText={activeAudioText}
+                onPlayAudio={playAIResponse}
+                onStopAudio={stopAIResponse}
+              />
+            </>
           )}
         </div>
       </div>

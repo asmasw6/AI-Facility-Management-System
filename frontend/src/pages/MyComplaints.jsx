@@ -15,7 +15,7 @@ export default function MyComplaints() {
         setComplaints(data);
       } catch (err) {
         console.error("Failed to load complaints:", err);
-        setError("Unable to load complaints.");
+        setError("Failed to load complaints. Please try again later.");
       } finally {
         setLoading(false);
       }

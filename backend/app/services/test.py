@@ -1,5 +1,64 @@
 
+import asyncio
+from app.services.llm_service import split_complaints_from_llm
 
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from pathlib import Path
+
+async def main():
+    BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+    MODEL_PATH = BACKEND_DIR / "model" / "arabic"
+
+    print("Model path:", MODEL_PATH)
+    print("Exists:", MODEL_PATH.exists())
+
+    if MODEL_PATH.exists():
+        print("Files:", list(MODEL_PATH.iterdir()))
+
+        tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
+        model = AutoModelForSequenceClassification.from_pretrained(str(MODEL_PATH))
+
+        print("Model loaded successfully!")
+        print("Number of labels:", model.config.num_labels)
+    else:
+        print("Model directory not found!")
+if __name__ == "__main__":
+    asyncio.run(main())
+     
+  
+'''
+    MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "arabic"
+
+    print("Model path:", MODEL_PATH)
+    print("Exists:", MODEL_PATH.exists())
+
+    print("Model path:", MODEL_PATH)
+    print("Exists:", MODEL_PATH.exists())
+    print("Files:", list(MODEL_PATH.iterdir()))
+
+    tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
+    model = AutoModelForSequenceClassification.from_pretrained(str(MODEL_PATH))
+
+    print("Model loaded successfully!")
+    print("Number of labels:", model.config.num_labels)'''
+   
+     
+     
+'''
+  
+    text =    "The air conditioner is not working, and there is a water leak in the kitchen."
+    
+
+    complaints = await split_complaints_from_llm(text)
+
+    for index, complaint in enumerate(complaints, start=1):
+        print(f"Complaint {index}: {complaint}")
+
+    print("Total complaints:", len(complaints))
+'''
+    
 '''
 
 async def get_sentiment_from_llm(text: str, max_retries: int = 3) -> str:

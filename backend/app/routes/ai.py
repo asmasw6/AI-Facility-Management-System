@@ -9,7 +9,7 @@ router = APIRouter()
 
 # Load BERT classifier once when the API starts
 try:
-    classifier = ComplaintClassifier("model")
+    classifier = ComplaintClassifier()
     print("BERT classifier loaded successfully!")
 
 except Exception as e:

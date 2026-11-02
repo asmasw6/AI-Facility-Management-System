@@ -7,11 +7,13 @@ from bson.errors import InvalidId
 from datetime import datetime, timezone
 
 from app.services.speech_to_text import transcribe_audio
+from app.services.language_service import detect_language
 
 from app.database import calls_collection, customers_collection
-from app.models.models import CallCreate, CallEnd, CallResponse, VoiceResponse, TTSRequest
-from app.routes.complaints import process_complaint
+from app.models.models import CallCreate, CallEnd, CallResponse, TTSRequest
+from app.routes.process_call import process_call
 from app.dependencies.auth import get_current_user
+from app.models.models import ProcessCallRequest
 
 from fastapi.responses import FileResponse
 from app.services.tts_service import text_to_speech
@@ -215,7 +217,7 @@ def end_call(call_id: str, call_end: CallEnd):
 
 
 # Voice Upload Endpoint
-@router.post("/voice", response_model=VoiceResponse)
+@router.post("/voice")
 async def voice_call(
     audio: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
@@ -275,45 +277,49 @@ async def voice_call(
         if os.path.exists(audio_path):
             os.remove(audio_path)
 
-    print(  f"Received audio file: {audio.filename}, "
-            f"size: {len(audio_content)} bytes, "
-            f"content type: {audio.content_type}, "
-            f"transcript: {transcript}"
-        )
     
-    # Create Call
-    call_data = {
-        "customer_id": object_id,
-        "transcript": transcript,
-        "started_at": datetime.now(timezone.utc),
-        "ended_at": None,
-        "duration": None,
-        "audio_url": audio.filename
-    }
-
-    result = calls_collection.insert_one(call_data)
-    
-    call_id = str(result.inserted_id)
-
-    agent_result =  await process_complaint(
-        customer_id=customer_id,
-        call_id=call_id,
-        text=transcript
+    # Return the newly created Call
+    return await process_call(
+        request=ProcessCallRequest(text=transcript),
+        current_user=current_user,
+        audio_url=filename,
     )
     
-    print("Agent result:", agent_result)
+    
+# Voice Upload Endpoint
+@router.post("/text")
+async def text_call(
+    audio: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    
+    # Get customer ID from JWT
+    customer_id = current_user["customer_id"]
 
-    return VoiceResponse(
-    call_id=call_id,
-    customer_id=customer_id,
-    transcript=transcript,
-    category=agent_result.get("category"),
-    confidence=agent_result.get("confidence"),
-    sentiment=agent_result.get("sentiment"),
-    priority=agent_result.get("priority"),
-    routing_team=agent_result.get("routing_team"),
-    ai_response=agent_result.get("ai_response"),
-    ticket_id=agent_result.get("ticket_id")
+    # Validate customer_id from JWT
+    try:
+        object_id = ObjectId(customer_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid customer ID"
+        )
+
+    # Check customer exists
+    customer = customers_collection.find_one({
+        "_id": object_id
+    })
+
+    if not customer:
+        raise HTTPException(
+            status_code=404,
+            detail="Customer not found"
+        )
+        
+    return await process_call(
+        request=ProcessCallRequest(text=transcript),
+        current_user=current_user,
+        audio_url=None,
     )
     
     
@@ -326,7 +332,8 @@ async def generate_speech(request: TTSRequest):
         )
 
     try:
-        audio_path = await text_to_speech(request.text)
+        
+        audio_path = await text_to_speech(request.text, language=detect_language(request.text))
     
         return FileResponse(path=audio_path,
                             media_type="audio/mpeg",

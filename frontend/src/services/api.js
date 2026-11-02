@@ -21,12 +21,25 @@ async function handleResponse(response, errorMessage) {
 {/* Tickets */}
 
 export async function getTickets() {
-  const response = await fetch(`${API_URL}/tickets/`);
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("User is not authenticated.");
+  }
+  const response = await fetch(`${API_URL}/tickets/`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    }
+  });
 
-  return handleResponse(
-    response,
-    "Failed to fetch complaints."
-  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || "Failed to fetch complaints.");
+  }
+
+  return data;
 }
 
 

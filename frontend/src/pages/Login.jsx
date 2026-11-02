@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -36,6 +36,7 @@ export default function Login() {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("customer", JSON.stringify(data.customer));
 
+      onLogin();
       navigate("/", { replace: true });
     } catch (err) {
       setError(

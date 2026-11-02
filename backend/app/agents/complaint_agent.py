@@ -5,6 +5,7 @@ from app.services.llm_service import (
     get_sentiment_from_llm,
     determine_priority,
     generate_llm_response,
+    split_complaints_from_llm
 )
 
 from app.database import (
@@ -20,15 +21,20 @@ from app.models.models import TicketStatus, TicketPriority
 
 from bson import ObjectId
 from datetime import datetime, timezone
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
+import operator
+from typing import Annotated
+from langgraph.types import Send
+from app.services.language_service import detect_language
 
 # Agent State
 #----------------------------------------------
-class ComplaintState(TypedDict, total=False):
+class ComplaintState(TypedDict, total=False): # This state for one complaint processing.
     # Input
     customer_id: str
     call_id: Optional[str]
     text: str
+    language: str 
 
     # Database information
     apartment_id: ObjectId
@@ -46,10 +52,19 @@ class ComplaintState(TypedDict, total=False):
     priority_reason: str
     ai_response: str
     
-    
     # Result
     ticket_id: str
     
+# Node: Language Detection
+def detect_language_node(state: ComplaintState):
+    
+    language = detect_language(state['text'])
+    
+    if language not in {"ar", "en"}:
+        raise ValueError(f"Unsupported language: {language}")
+    
+    return {"language": language}
+
 # 1. Node: Check from the Customer, retrieve the apartment and building information from the database.
 #-------------------------------------------------------------
 def load_customer_data(state: ComplaintState):
@@ -93,7 +108,6 @@ def load_customer_data(state: ComplaintState):
         "apartment_number": apartment["apartment_number"],
     }
     
-# 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴    
 # 2. Node: Check from call
 #-------------------------------------------------------------
 def validate_call(state: ComplaintState):
@@ -125,7 +139,8 @@ def classify_complaint(state: ComplaintState):
         raise ValueError("BERT classifier is not loaded")
 
     category, confidence = classifier.predict(
-        state["text"]
+        state["text"], 
+        language=state["language"]
     )
 
     return {
@@ -293,7 +308,8 @@ async def generate_customer_response(state: ComplaintState):
         priority=state["priority"],
         customer_name=state["customer_name"],
         building_number=state["building_number"],
-        apartment_number=state["apartment_number"]
+        apartment_number=state["apartment_number"],
+        language= state["language"]
     )
 
     return {
@@ -305,7 +321,7 @@ async def generate_customer_response(state: ComplaintState):
 #------------------------------------------------------------- 
 def create_ticket(state: ComplaintState):
     customer_id = ObjectId(state["customer_id"])
-
+    
     call_id = None
 
     if state.get("call_id"):
@@ -360,6 +376,9 @@ def build_complaint_agent():
         "validate_call",
         validate_call
     )
+    
+    graph.add_node("detect_language", detect_language_node)
+    
 
     graph.add_node(
         "classify_complaint",
@@ -411,9 +430,15 @@ def build_complaint_agent():
         "load_customer_data",
         "validate_call"
     )
-
+    
+    
     graph.add_edge(
-        "validate_call",
+        "validate_call", 
+        "detect_language"
+    )
+    
+    graph.add_edge(
+        "detect_language",
         "classify_complaint"
     )
 
@@ -468,3 +493,111 @@ def build_complaint_agent():
 
 
 complaint_agent = build_complaint_agent()
+
+
+'''   
+class MultiComplaintState(TypedDict, total=False): # This state for multiple complaints processing.
+    # Original Input
+    customer_id: str
+    call_id: Optional[str]
+    text: str
+    
+    # extracted complaints
+    complaints: list[str]
+    
+    # result returned by parallel complaint tasks
+    results: Annotated[list[dict], operator.add]
+'''
+# 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
+'''
+async def split_complaints(state: MultiComplaintState):
+    try:
+        complaints = await split_complaints_from_llm(
+            state["text"]
+        )
+    except Exception as e:
+        print(f'Complaint splitting failed:  {type(e).__name__}')
+        
+
+    if not complaints:
+        raise ValueError("No complaints were extracted")
+
+    return {
+        "complaints": complaints
+    } 
+  '''  
+
+'''
+# this function is used to process a single complaint each time 
+async def process_single_complaint(state: ComplaintState):
+    result = await complaint_agent.ainvoke({
+        "customer_id": state["customer_id"],
+        "call_id": state.get("call_id"),
+        "text": state["text"],
+    })
+
+    return {
+        "results": [
+            {
+                "complaint": state["text"],
+                "ticket_id": result.get("ticket_id"),
+                "category": result.get("category"),
+                "confidence": result.get("confidence"),
+                "sentiment": result.get("sentiment"),
+                "priority": result.get("priority"),
+                "route": result.get("route"),
+                "routing_team": result.get("routing_team"),
+                "priority_reason": result.get("priority_reason"),
+                "ai_response": result.get("ai_response"),
+            }
+        ]
+    }
+    
+def dispatch_complaints(state: MultiComplaintState):
+    
+    return [
+        Send(
+            "process_single_complaint",
+            {
+                "customer_id": state["customer_id"],
+                "call_id": state.get("call_id"),
+                "text": complaint,
+            }
+        )  
+        
+        for complaint in state["complaints"]     
+    ]
+    
+def build_multi_complaint_agent():
+    graph = StateGraph(MultiComplaintState)
+
+    graph.add_node(
+        "split_complaints",
+        split_complaints,
+    )
+
+    graph.add_node(
+        "process_single_complaint",
+        process_single_complaint,
+    )
+
+    graph.add_edge(
+        START,
+        "split_complaints",
+    )
+
+    graph.add_conditional_edges(
+        "split_complaints",
+        dispatch_complaints,
+    )
+
+    graph.add_edge(
+        "process_single_complaint",
+        END,
+    )
+
+    return graph.compile()
+
+
+multi_complaint_agent = build_multi_complaint_agent()
+'''

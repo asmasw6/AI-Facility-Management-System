@@ -157,11 +157,16 @@ class CallResponse(MongoBaseModel):
 #=========================================================
 # Voice Response
 #=========================================================
+'''
 class VoiceResponse(MongoBaseModel):
-
-    call_id: str
+    id: str = Field(alias="_id")
     customer_id: str
     transcript: str
+    audio_url: str
+
+    
+ 
+    call_id: str
 
     category: Optional[str] = None
     confidence: Optional[float] = None
@@ -171,13 +176,14 @@ class VoiceResponse(MongoBaseModel):
 
     ai_response: Optional[str] = None
     ticket_id: Optional[str] = None
-  
+'''
   
 #=========================================================
 # TTS
 #=========================================================  
 class TTSRequest(BaseModel):
     text: str
+    
       
 #=========================================================
 # Complaints
@@ -194,8 +200,6 @@ class ComplaintRequest(BaseModel):
 # =========================================================
 
 class ProcessCallRequest(MongoBaseModel):
-    #customer_id: str
-    #call_id: Optional[str] = None
     text: str = Field(
         ...,
         description="Text extracted from the customer's call transcript, which describes the issue they are facing.>>>"
@@ -204,8 +208,6 @@ class ProcessCallRequest(MongoBaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                #"customer_id": "68b123456789abcdef123456",
-                "call_id": "68b987654321abcdef123456",
                 "text": "The air conditioner is leaking water and is no longer cooling the apartment."
             }
         }
