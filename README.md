@@ -19,8 +19,7 @@ The system features an AI Agent built with **LangGraph** to orchestrate the comp
 12. **Web Interface:** Offers a React-based interface for submitting complaints, interacting with the AI agent, and monitoring maintenance tickets.
 
 ## AI Pipeline
-![Executive Overview](mermaid-diagram.png)
-
+<img src="mermaid-diagram.png" alt="Executive Overview" width="500">
 
 ## Screenshots
 #### Home
