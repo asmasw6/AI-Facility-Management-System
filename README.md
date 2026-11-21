@@ -15,69 +15,8 @@ The system uses an AI Agent built with LangGraph to orchestrate and make decisio
 9. Provides a React-based interface for submitting and monitoring complaints
 
 ## AI Pipeline
+![Executive Overview](mermaid-diagram.png)
 
-                         ┌──────────────────────┐
-                         │   Customer Complaint │
-                         │      / Call Text     │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │  Load Customer Data  │
-                         │ Building + Apartment │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    Validate Call     │
-                         │ Customer ↔ Call      │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │ DistilBERT Classifier│
-                         │ Complaint Category   │
-                         │ + Confidence Score   │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │  Sentiment Analysis  │
-                         │       Gemini LLM     │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │ Priority Determination│
-                         │ Urgent / High / Med  │
-                         │        / Low         │
-                         └──────────┬───────────┘
-                                    │
-                         ┌──────────┴───────────┐
-                         │   Agent Decision     │
-                         │  Conditional Routing │
-                         └──────────┬───────────┘
-                                    │
-                  ┌─────────────────┼─────────────────┐
-                  ▼                 ▼                 ▼
-          ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-          │   URGENT     │  │     HIGH     │  │ NORMAL       │
-          │ Emergency    │  │  Fast Track  │  │ Standard     │
-          │    Path      │  │    Path      │  │    Path      │
-          └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-                 │                 │                 │
-                 └─────────────────┼─────────────────┘
-                                   ▼
-                         ┌──────────────────────┐
-                         │  Generate Customer   │
-                         │    Response (LLM)    │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    Create Ticket     │
-                         │      MongoDB         │
-                         └──────────────────────┘
 
 ## Screenshots
 #### Home
