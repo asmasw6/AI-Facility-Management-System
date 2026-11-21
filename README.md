@@ -1,18 +1,22 @@
 # AI-Powered Facility Management System
 
-An AI-powered facility management system designed to automate the processing and management of customer complaints and maintenance requests.
+An AI-powered multilingual facility management system designed to automate the processing and management of customer complaints and maintenance requests through intelligent workflows and voice-enabled interactions.
+The system features an AI Agent built with **LangGraph** to orchestrate the complaint-processing workflow and make decisions at each stage. It supports **Arabic and English**, allowing customers to submit complaints using either text or voice and receive responses in their preferred language.
 
-The system uses an AI Agent built with LangGraph to orchestrate and make decisions throughout the complaint-processing workflow. It automatically:
+### Key Features
 
-1. Classifies complaints into facility management categories using a DistilBERT-based NLP classifier
-2. Detects customer sentiment using Google Gemini
-3. Determines ticket priority based on issue severity, complaint content, sentiment, and classification confidence
-4. Makes workflow decisions and routes complaints based on their priority
-5. Generates professional customer responses using Google Gemini
-6. Creates and manages maintenance tickets
-7. Stores customer, call, apartment, building, and ticket information in MongoDB
-8. Exposes RESTful APIs using FastAPI
-9. Provides a React-based interface for submitting and monitoring complaints
+1. **Complaint Classification:** Classifies customer complaints into facility management categories using a BERT-based NLP classifier, generating category predictions and confidence scores.
+2. **Multilingual Support:** Processes complaints in both Arabic and English using language detection and language-specific text preprocessing.
+3. **Voice Interaction:** Supports voice-based complaint submission through Speech-to-Text (STT) and generates spoken responses using Text-to-Speech (TTS).
+4. **Sentiment Analysis:** Analyzes customer sentiment using Google Gemini.
+5. **Priority Assessment:** Determines ticket priority based on issue severity, complaint content, customer sentiment, and classification confidence.
+6. **Intelligent Workflow Routing:** Uses LangGraph conditional routing to direct complaints through Urgent, High-Priority, or Standard processing paths.
+7. **AI Response Generation:** Generates professional, context-aware customer responses using Google Gemini in Arabic or English.
+8. **Ticket Management:** Automatically creates and manages maintenance tickets based on complaint details and assigned priorities.
+9. **Authentication & Authorization:** Implements JWT-based authentication to secure API endpoints and manage authenticated customer access.
+10. **Database Management:** Stores and manages customer, call, apartment, building, and ticket information in MongoDB.
+11. **RESTful API:** Provides backend services and endpoints using FastAPI.
+12. **Web Interface:** Offers a React-based interface for submitting complaints, interacting with the AI agent, and monitoring maintenance tickets.
 
 ## AI Pipeline
 ![Executive Overview](mermaid-diagram.png)
@@ -38,12 +42,12 @@ Provides detailed information about an individual complaint, including the detec
 
 
 ## Future Improvements
-
-- Add real-time voice call simulation with speech-to-text and text-to-speech capabilities.
 - Improve the AI-powered ticket classification and priority detection.
 - Enhance the generated AI responses to provide more contextual and personalized replies.
 - Add new facility management features and expand the supported complaint categories.
 - Improve the overall system performance, reliability, and user experience.
+- Expand multilingual capabilities to support additional languages.
+
 
 ## Technologies
 
